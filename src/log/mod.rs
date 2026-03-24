@@ -1,7 +1,7 @@
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::fmt;
+use tracing_subscriber::{fmt, EnvFilter};
 use tracing_subscriber::fmt::time::ChronoLocal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -33,8 +33,12 @@ pub async fn init_log(app_path: &PathBuf) -> anyhow::Result<WorkerGuard> {
         .with_level(true)
         .with_target(false);
 
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+
     //组合所有层
     tracing_subscriber::registry()
+        .with(filter)
         .with(file_layer)
         .with(console_layer)
         .init();
