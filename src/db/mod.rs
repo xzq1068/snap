@@ -1,10 +1,9 @@
 pub mod project_space;
 
 use anyhow::Result;
-use sqlx::SqlitePool;
 use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::SqlitePool;
 use std::path::PathBuf;
-use crate::db::project_space::ProjectSpace;
 
 pub async fn init_db(app_path: &PathBuf) -> Result<SqlitePool> {
 
