@@ -2,8 +2,8 @@ pub mod db;
 pub mod log;
 pub mod server;
 
-use crate::db::project_space::ProjectSpaceRepository;
 use crate::db::init_db;
+use crate::db::project_space::ProjectSpaceRepository;
 use crate::log::init_log;
 use crate::server::{start_server, AppState};
 use anyhow::Result;
@@ -11,7 +11,6 @@ use colored::Colorize;
 use home::home_dir;
 use std::fs::create_dir_all;
 use std::sync::Arc;
-use sqlx::SqlitePool;
 use sysinfo::System;
 
 #[tokio::main]
@@ -34,12 +33,12 @@ async fn main() -> Result<()> {
     let _guard = init_log(&data_dir).await?;
 
     //2. 初始化数据库
-    let pool=init_db(&data_dir).await?;
+    let pool = init_db(&data_dir).await?;
 
     //3. 初始化web Server
-    let project_space_repo=Arc::new(ProjectSpaceRepository::new(pool));
+    let project_space_repo = Arc::new(ProjectSpaceRepository::new(pool));
 
-    let app_state=AppState::new(project_space_repo);
+    let app_state = AppState::new(project_space_repo);
 
     start_server(app_state).await?;
 

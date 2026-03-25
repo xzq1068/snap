@@ -1,16 +1,17 @@
 mod project_space;
 
-use std::sync::Arc;
+use crate::db::project_space::ProjectSpaceRepository;
+use crate::server::project_space::{create_project, delete_project, select_all, select_by_id};
 use anyhow::Result;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{ get, post};
 use axum::{Json, Router};
 use serde::Serialize;
+use std::sync::Arc;
 use sysinfo::System;
 use tokio::net::TcpListener;
 use tracing::info;
-use crate::db::project_space::ProjectSpaceRepository;
 
 #[derive(Clone)]
 pub struct AppState{
@@ -93,9 +94,13 @@ where
 
 
 pub async fn start_server(state:AppState) -> Result<()> {
-    let app = Router::new().route(
-        "/health", get(|| async { "success"; }),
-    ).with_state(state);
+    let app = Router::new()
+        .route("/health", get(|| async { "success"; }), )
+        .route("/project/{id}", get(select_by_id).delete(delete_project))
+        .route("/project/all", post(select_all))
+        .route("/project", post(create_project))
+
+        .with_state(state);
 
     let addr = "0.0.0.0:10086";
 
