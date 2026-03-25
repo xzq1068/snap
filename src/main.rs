@@ -2,13 +2,16 @@ pub mod db;
 pub mod log;
 pub mod server;
 
+use crate::db::project_space::ProjectSpaceRepository;
 use crate::db::init_db;
 use crate::log::init_log;
-use crate::server::start_server;
+use crate::server::{start_server, AppState};
 use anyhow::Result;
 use colored::Colorize;
 use home::home_dir;
 use std::fs::create_dir_all;
+use std::sync::Arc;
+use sqlx::SqlitePool;
 use sysinfo::System;
 
 #[tokio::main]
@@ -24,14 +27,21 @@ async fn main() -> Result<()> {
     //banner
     print_startup_banner();
 
+    // 安装 sqlx Any 驱动（必须在连接数据库之前调用）
+    // sqlx::any::install_default_drivers();  // 不再需要
+
     //1. 初始化日志
     let _guard = init_log(&data_dir).await?;
 
     //2. 初始化数据库
-    init_db(&data_dir).await?;
+    let pool=init_db(&data_dir).await?;
 
     //3. 初始化web Server
-    start_server().await?;
+    let project_space_repo=Arc::new(ProjectSpaceRepository::new(pool));
+
+    let app_state=AppState::new(project_space_repo);
+
+    start_server(app_state).await?;
 
     Ok(())
 }
