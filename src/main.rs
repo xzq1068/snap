@@ -5,7 +5,7 @@ pub mod server;
 use crate::db::init_db;
 use crate::db::project_space::ProjectSpaceRepository;
 use crate::log::init_log;
-use crate::server::{start_server, AppState};
+use crate::server::{AppState, start_server};
 use anyhow::Result;
 use colored::Colorize;
 use home::home_dir;

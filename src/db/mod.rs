@@ -1,12 +1,11 @@
 pub mod project_space;
 
 use anyhow::Result;
-use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 use std::path::PathBuf;
 
 pub async fn init_db(app_path: &PathBuf) -> Result<SqlitePool> {
-
     let dn_path = app_path.join(".snap.db");
 
     let db_url = format!("sqlite:{}?mode=rwc", dn_path.display());
