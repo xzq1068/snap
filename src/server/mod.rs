@@ -129,7 +129,7 @@ pub async fn start_server(state: AppState) -> Result<()> {
         .await
         .expect("start tcp server failed");
 
-    info!("start web server http://{}", addr);
+    info!("🚀 start web server http://{}", addr);
 
     axum::serve(tcp_listener, app)
         .await
