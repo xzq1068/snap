@@ -24,13 +24,11 @@ pub async fn init_db(app_path: &PathBuf) -> Result<SqlitePool> {
 
     //2. 接口表
 
-
     //3. 压测计划表
 
-    //4。压测结果表
+    //4. 插件表
 
-    //5. 插件表
-
+    //5。压测结果表
 
     Ok(pool)
 }
