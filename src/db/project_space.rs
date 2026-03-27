@@ -1,9 +1,8 @@
+use crate::db::error::{DbError, DbResult, is_unique_constraint};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ProjectSpace {
@@ -37,37 +36,12 @@ pub struct ProjectSpaceRepository {
     pool: SqlitePool,
 }
 
-#[derive(Debug)]
-pub enum ProjectSpaceRepositoryError {
-    AlreadyExists(String),
-    NotFound(i64),
-    Database(sqlx::Error),
-}
-
-impl Display for ProjectSpaceRepositoryError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProjectSpaceRepositoryError::AlreadyExists(project_code) => {
-                write!(f, "project_code `{project_code}` already exists")
-            }
-            ProjectSpaceRepositoryError::NotFound(id) => write!(f, "project id `{id}` not found"),
-            ProjectSpaceRepositoryError::Database(error) => write!(f, "{error}"),
-        }
-    }
-}
-
-impl Error for ProjectSpaceRepositoryError {}
-
 impl ProjectSpaceRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
 
-    pub async fn insert(
-        &self,
-        project_name: &str,
-        project_code: &str,
-    ) -> std::result::Result<(), ProjectSpaceRepositoryError> {
+    pub async fn insert(&self, project_name: &str, project_code: &str) -> DbResult<()> {
         let result = sqlx::query(
             r#"
         INSERT INTO project_space (project_code, project_name)
@@ -81,64 +55,55 @@ impl ProjectSpaceRepository {
 
         match result {
             Ok(_) => Ok(()),
-            Err(error) if is_unique_constraint(&error) => Err(
-                ProjectSpaceRepositoryError::AlreadyExists(project_code.to_string()),
-            ),
-            Err(error) => Err(ProjectSpaceRepositoryError::Database(error)),
+            Err(error) if is_unique_constraint(&error) => Err(DbError::Conflict {
+                entity: "project_space",
+                field: "project_code",
+                value: project_code.to_string(),
+            }),
+            Err(error) => Err(DbError::Database(error)),
         }
     }
 
-    pub async fn delete(&self, id: i64) -> std::result::Result<(), ProjectSpaceRepositoryError> {
+    pub async fn delete(&self, id: i64) -> DbResult<()> {
         // todo: 后期要校验项目空间是否关联了其他东西，否则不允许删除
         let result = sqlx::query("delete from project_space WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(ProjectSpaceRepositoryError::Database)?;
+            .map_err(DbError::Database)?;
 
         if result.rows_affected() == 0 {
-            return Err(ProjectSpaceRepositoryError::NotFound(id));
+            return Err(DbError::NotFound {
+                entity: "project_space",
+                id,
+            });
         }
 
         Ok(())
     }
 
-    pub async fn select_by_id(
-        &self,
-        id: i64,
-    ) -> std::result::Result<ProjectSpace, ProjectSpaceRepositoryError> {
+    pub async fn select_by_id(&self, id: i64) -> DbResult<ProjectSpace> {
         let result = sqlx::query_as::<_, ProjectSpace>("select * from project_space where id = ?")
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(ProjectSpaceRepositoryError::Database)?;
+            .map_err(DbError::Database)?;
 
-        result.ok_or(ProjectSpaceRepositoryError::NotFound(id))
+        result.ok_or(DbError::NotFound {
+            entity: "project_space",
+            id,
+        })
     }
 
-    pub async fn select_all(
-        &self,
-    ) -> std::result::Result<Vec<ProjectSpace>, ProjectSpaceRepositoryError> {
+    pub async fn select_all(&self) -> DbResult<Vec<ProjectSpace>> {
         let result = sqlx::query_as::<_, ProjectSpace>(
             "select * from project_space order by update_time desc, id desc",
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(ProjectSpaceRepositoryError::Database)?;
+        .map_err(DbError::Database)?;
 
         Ok(result)
-    }
-}
-
-fn is_unique_constraint(error: &sqlx::Error) -> bool {
-    match error {
-        sqlx::Error::Database(db_error) => {
-            db_error.is_unique_violation()
-                || db_error
-                    .message()
-                    .contains("UNIQUE constraint failed: project_space.project_code")
-        }
-        _ => false,
     }
 }
 
@@ -175,7 +140,8 @@ mod tests {
 
         assert!(matches!(
             error,
-            ProjectSpaceRepositoryError::AlreadyExists(project_code) if project_code == "demo"
+            DbError::Conflict { entity, field, value }
+                if entity == "project_space" && field == "project_code" && value == "demo"
         ));
     }
 }

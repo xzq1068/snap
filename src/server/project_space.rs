@@ -1,4 +1,4 @@
-use crate::db::project_space::{ProjectSpace, ProjectSpaceRepositoryError};
+use crate::db::project_space::ProjectSpace;
 use crate::server::{ApiResponse, ApiResult, AppError, AppState};
 use axum::Json;
 use axum::extract::{Path, State};
@@ -31,7 +31,7 @@ pub async fn create_project(
         Ok(_) => Ok(ApiResponse::success(None)),
         Err(e) => {
             error!("Failed to insert project_space: {:?}", e);
-            Err(map_repository_error(e))
+            Err(e.into())
         }
     }
 }
@@ -41,7 +41,7 @@ pub async fn delete_project(State(state): State<AppState>, Path(id): Path<i64>) 
         Ok(_) => Ok(ApiResponse::success(None)),
         Err(e) => {
             error!("Failed to delete project_space: {:?}", e);
-            Err(map_repository_error(e))
+            Err(e.into())
         }
     }
 }
@@ -51,7 +51,7 @@ pub async fn select_all(State(state): State<AppState>) -> ApiResult<Vec<ProjectS
         Ok(data) => Ok(ApiResponse::success(Some(data))),
         Err(e) => {
             error!("Failed to select all projects: {:?}", e);
-            Err(map_repository_error(e))
+            Err(e.into())
         }
     }
 }
@@ -64,19 +64,7 @@ pub async fn select_by_id(
         Ok(data) => Ok(ApiResponse::success(Some(data))),
         Err(e) => {
             error!("Failed to select_by_id project_space: {:?}", e);
-            Err(map_repository_error(e))
+            Err(e.into())
         }
-    }
-}
-
-fn map_repository_error(error: ProjectSpaceRepositoryError) -> AppError {
-    match error {
-        ProjectSpaceRepositoryError::AlreadyExists(project_code) => {
-            AppError::Conflict(format!("project_code `{project_code}` 已存在"))
-        }
-        ProjectSpaceRepositoryError::NotFound(id) => {
-            AppError::NotFound(format!("id 为 {id} 的项目不存在"))
-        }
-        ProjectSpaceRepositoryError::Database(_) => AppError::InnerError,
     }
 }

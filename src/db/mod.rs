@@ -1,3 +1,5 @@
+pub mod api_definition;
+pub mod error;
 pub mod project_space;
 
 use anyhow::Result;
@@ -22,6 +24,7 @@ pub async fn init_db(app_path: &PathBuf) -> Result<SqlitePool> {
     project_space::create_table(&pool).await?;
 
     //2. 接口表
+    api_definition::create_table(&pool).await?;
 
     //3. 压测计划表
 

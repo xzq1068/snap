@@ -1,6 +1,8 @@
+mod error;
 mod project_space;
 
 use crate::db::project_space::ProjectSpaceRepository;
+pub use crate::server::error::AppError;
 use crate::server::project_space::{create_project, delete_project, select_all, select_by_id};
 use anyhow::Result;
 use axum::http::StatusCode;
@@ -18,43 +20,6 @@ pub struct AppState {
 }
 
 pub type ApiResult<T> = std::result::Result<ApiResponse<T>, AppError>;
-
-#[derive(Debug)]
-pub enum AppError {
-    BadRequest(String),
-    Conflict(String),
-    NotFound(String),
-    InnerError,
-}
-
-impl AppError {
-    pub fn code(&self) -> &'static str {
-        match self {
-            AppError::BadRequest(_) => "400",
-            AppError::Conflict(_) => "409",
-            AppError::NotFound(_) => "404",
-            AppError::InnerError => "500",
-        }
-    }
-
-    pub fn msg(&self) -> String {
-        match self {
-            AppError::BadRequest(msg) => msg.clone(),
-            AppError::Conflict(msg) => msg.clone(),
-            AppError::NotFound(msg) => msg.clone(),
-            AppError::InnerError => "服务器内部错误".to_string(),
-        }
-    }
-
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
-            AppError::Conflict(_) => StatusCode::CONFLICT,
-            AppError::NotFound(_) => StatusCode::NOT_FOUND,
-            AppError::InnerError => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
-}
 
 impl AppState {
     pub fn new(project_repository: Arc<ProjectSpaceRepository>) -> Self {
@@ -99,14 +64,6 @@ where
 {
     fn into_response(self) -> Response {
         (StatusCode::OK, Json(self)).into_response()
-    }
-}
-
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let status = self.status_code();
-        let body = ApiResponse::<()>::error(self.code(), self.msg());
-        (status, Json(body)).into_response()
     }
 }
 
